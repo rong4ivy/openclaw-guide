@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenClaw 安装指南 — Gateway & Docker & Windows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0e17;
+    --bg-card: #111827;
+    --bg-code: #0d1321;
+    --border: #1e293b;
+    --border-glow: #f97316;
+    --accent: #f97316;
+    --accent-soft: #fb923c;
+    --accent-bg: rgba(249,115,22,0.08);
+    --teal: #2dd4bf;
+    --teal-soft: #5eead4;
+    --teal-bg: rgba(45,212,191,0.08);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167,139,250,0.08);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --red: #f87171;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Glow orbs */
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.35;
+  }
+  .glow-orb.orange { width: 500px; height: 500px; background: #f97316; top: -150px; right: -100px; }
+  .glow-orb.teal   { width: 400px; height: 400px; background: #2dd4bf; bottom: 20%; left: -120px; }
+  .glow-orb.purple  { width: 350px; height: 350px; background: #7c3aed; bottom: -100px; right: 10%; }
+
+  /* Layout */
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    padding: 80px 0 60px;
+    text-align: center;
+    position: relative;
+  }
+  .lobster-icon {
+    font-size: 64px;
+    display: block;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #f97316, #fb923c, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  header p {
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    font-weight: 300;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* ===== NAV TABS ===== */
+  .version-nav {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 40px 0 50px;
+    flex-wrap: wrap;
+  }
+  .version-nav button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 100px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .version-nav button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .version-nav button:hover { border-color: var(--accent); color: var(--text); }
+  .version-nav button.active {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+    box-shadow: 0 0 20px rgba(249,115,22,0.15);
+  }
+
+  /* ===== SECTIONS ===== */
+  .guide-section { display: none; animation: fadeUp 0.5s ease; }
+  .guide-section.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== STEP CARDS ===== */
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .step-card:hover {
+    border-color: rgba(249,115,22,0.3);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  }
+
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+  }
+  .step-badge.orange { background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(249,115,22,0.2); }
+  .step-badge.teal   { background: var(--teal-bg);   color: var(--teal);   border: 1px solid rgba(45,212,191,0.2); }
+  .step-badge.purple  { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+
+  .step-card h3 {
+    font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: #fff;
+  }
+
+  .step-card p, .step-card li {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+  .step-card ul {
+    list-style: none;
+    padding-left: 0;
+  }
+  .step-card ul li {
+    position: relative;
+    padding-left: 22px;
+  }
+  .step-card ul li::before {
+    content: '›';
+    position: absolute;
+    left: 4px;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  /* ===== CODE BLOCKS ===== */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 14px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  pre code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    color: var(--teal-soft);
+  }
+  /* Copy button */
+  pre .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0;
+  }
+  pre:hover .copy-btn { opacity: 1; }
+  pre .copy-btn:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+  /* inline code */
+  code:not(pre code) {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(249,115,22,0.1);
+    color: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(249,115,22,0.15);
+  }
+
+  /* ===== WARN / TIP ===== */
+  .callout {
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .callout .icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+  .callout.warn  { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.15); color: var(--yellow); }
+  .callout.tip   { background: rgba(45,212,191,0.06);  border: 1px solid rgba(45,212,191,0.15);  color: var(--teal); }
+  .callout.error { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.15); color: var(--red); }
+
+  /* ===== SECTION TITLE ===== */
+  .section-title {
+    font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title .emoji { font-size: 1.4rem; }
+
+  /* ===== PLATFORM TAGS ===== */
+  .platform-tags {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .platform-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    text-align: center;
+    padding: 60px 0 40px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 640px) {
+    header { padding: 50px 0 40px; }
+    .step-card { padding: 22px 18px; }
+    pre { padding: 14px 16px; }
+    .version-nav button { padding: 8px 16px; font-size: 0.78rem; }
+  }
+
+  /* YAML styling */
+  .yaml-key { color: #f87171; }
+  .yaml-val { color: #4ade80; }
+  .yaml-comment { color: #64748b; }
+
+  /* Separator */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 40px 0;
+  }
+
+  /* Link */
+  a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+  a:hover { color: var(--accent-soft); text-decoration: underline; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="glow-orb orange"></div>
+<div class="glow-orb teal"></div>
+<div class="glow-orb purple"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <span class="lobster-icon">🦞</span>
+    <h1>OpenClaw 安装指南</h1>
+    <p>三种安装方式，覆盖 macOS / Windows / Docker，从零到启动一步步来。</p>
+  </header>
+
+  <!-- TAB NAV -->
+  <nav class="version-nav">
+    <button class="active" onclick="switchTab('gateway')">🍎 macOS Gateway</button>
+    <button onclick="switchTab('docker')">🐳 Docker 版本</button>
+    <button onclick="switchTab('windows')">🪟 Windows 版本</button>
+  </nav>
+
+  <!-- ============================================================ -->
+  <!-- macOS Gateway Version -->
+  <!-- ============================================================ -->
+  <div id="tab-gateway" class="guide-section active">
+
+    <h2 class="section-title"><span class="emoji">🍎</span>macOS — Gateway 原生安装</h2>
+
+    <div class="platform-tags">
+      <span class="platform-tag">macOS</span>
+      <span class="platform-tag">Node.js ≥ 18</span>
+      <span class="platform-tag">npm</span>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-card">
+      <span class="step-badge orange">Step 1</span>
+      <h3>检查 & 升级 Node 版本</h3>
+      <p>确保 Node.js 和 npm 版本足够新（Node ≥ 18 推荐）：</p>
+      <pre><code>node -v
+npm -v</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>如果版本过低，通过 Homebrew 更新：</p>
+      <pre><code>brew update
+brew upgrade node</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+      <span class="step-badge orange">Step 2</span>
+      <h3>运行安装脚本</h3>
+      <pre><code>curl -fsSL https://openclaw.ai/install.sh | bash</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+      <span class="step-badge orange">Step 3</span>
+      <h3>引导初始化 (Onboard)</h3>
+      <pre><code>openclaw onboard --install-daemon</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>引导过程中你需要：</p>
+      <ul>
+        <li>选择 LLM 提供商（Claude / OpenAI）并粘贴你的 API Key</li>
+        <li>如需远程访问，将 Tailscale 设为 <code>Serve</code></li>
+        <li>如果只需 Web UI，跳过 Telegram/WhatsApp（选 "None" 或按 <code>Ctrl+C</code>）</li>
+        <li>完成 Persona 设置 — 名称（Name）、风格（Vibe）、Emoji</li>
+      </ul>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+      <span class="step-badge orange">Step 4</span>
+      <h3>启动 Gateway & 打开面板</h3>
+      <p>获取认证 Token 并启动：</p>
+      <pre><code>openclaw config get gateway.auth.token
+openclaw gateway start</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>打开控制面板：</p>
+      <pre><code>openclaw dashboard</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>浏览器会自动打开：</p>
+      <pre><code>http://127.0.0.1:18789</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+      <div class="callout tip">
+        <span class="icon">💡</span>
+        <span>如果页面空白，运行 <code>openclaw health</code> 和 <code>openclaw status</code> 检查服务状态。</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Docker Version -->
+  <!-- ============================================================ -->
+  <div id="tab-docker" class="guide-section">
+
+    <h2 class="section-title"><span class="emoji">🐳</span>Docker 版本 — 干净隔离部署</h2>
+
+    <div class="platform-tags">
+      <span class="platform-tag">macOS (Intel / Apple Silicon)</span>
+      <span class="platform-tag">Windows 11</span>
+      <span class="platform-tag">Windows + WSL2</span>
+      <span class="platform-tag">Docker Desktop</span>
+    </div>
+
+    <!-- Step 0 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 0</span>
+      <h3>安装 Docker Desktop</h3>
+      <p><strong>macOS：</strong>下载安装 <a href="https://www.docker.com/products/docker-desktop/" target="_blank">Docker Desktop</a></p>
+      <p><strong>Windows：</strong>下载安装 Docker Desktop（确保启用 WSL2 后端）</p>
+      <p>安装完成后验证：</p>
+      <pre><code>docker --version</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <div class="callout tip">
+        <span class="icon">💡</span>
+        <span>如果提示 Docker 未运行，手动启动 Docker Desktop 应用。</span>
+      </div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 1</span>
+      <h3>创建工作目录 & 配置密钥</h3>
+      <pre><code>mkdir openclaw-docker
+cd openclaw-docker</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>创建 <code>.env</code> 文件并写入你的 API Key：</p>
+      <pre><code>touch .env</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>编辑 <code>.env</code>，选择一个填入：</p>
+      <pre><code><span class="yaml-comment"># 二选一，不要同时添加两个</span>
+OPENAI_API_KEY=your_key_here
+<span class="yaml-comment"># 或者</span>
+ANTHROPIC_API_KEY=your_key_here</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 2</span>
+      <h3>创建 docker-compose.yml</h3>
+      <pre><code><span class="yaml-key">version:</span> <span class="yaml-val">"3.9"</span>
+
+<span class="yaml-key">services:</span>
+  <span class="yaml-key">openclaw:</span>
+    <span class="yaml-key">image:</span> <span class="yaml-val">ghcr.io/openclawai/openclaw:latest</span>
+    <span class="yaml-key">container_name:</span> <span class="yaml-val">openclaw</span>
+    <span class="yaml-key">restart:</span> <span class="yaml-val">unless-stopped</span>
+    <span class="yaml-key">ports:</span>
+      - <span class="yaml-val">"18789:18789"</span>
+    <span class="yaml-key">env_file:</span>
+      - <span class="yaml-val">.env</span>
+    <span class="yaml-key">volumes:</span>
+      - <span class="yaml-val">openclaw_data:/root/.openclaw</span>
+    <span class="yaml-key">stdin_open:</span> <span class="yaml-val">true</span>
+    <span class="yaml-key">tty:</span> <span class="yaml-val">true</span>
+
+<span class="yaml-key">volumes:</span>
+  <span class="yaml-key">openclaw_data:</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>这个配置会：映射面板端口、持久化记忆数据、隔离运行环境、异常自动重启。</p>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 3</span>
+      <h3>启动容器</h3>
+      <pre><code>docker compose up -d</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>查看日志：</p>
+      <pre><code>docker logs -f openclaw</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>打开浏览器访问：</p>
+      <pre><code>http://127.0.0.1:18789</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 4</span>
+      <h3>容器内引导初始化</h3>
+      <p>进入容器：</p>
+      <pre><code>docker exec -it openclaw bash</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>运行引导程序：</p>
+      <pre><code>openclaw onboard</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>选择 LLM、完成 Persona 设置后退出容器：</p>
+      <pre><code>exit</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 5</span>
+      <h3>安全文件访问（可选）</h3>
+      <p>如果你想让 OpenClaw 访问主机上的特定文件夹，修改 <code>docker-compose.yml</code> 的 volumes：</p>
+      <pre><code><span class="yaml-key">volumes:</span>
+  - <span class="yaml-val">./workspace:/workspace</span>
+  - <span class="yaml-val">openclaw_data:/root/.openclaw</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>然后创建目录：</p>
+      <pre><code>mkdir workspace</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <div class="callout warn">
+        <span class="icon">⚠️</span>
+        <span>OpenClaw 只能访问 <code>/workspace</code> 目录，不会触碰你的系统文件。</span>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-card">
+      <span class="step-badge teal">Step 6</span>
+      <h3>常用控制命令</h3>
+      <pre><code><span class="yaml-comment"># 启动</span>
+docker compose up -d
+
+<span class="yaml-comment"># 停止</span>
+docker compose down
+
+<span class="yaml-comment"># 重启</span>
+docker compose restart
+
+<span class="yaml-comment"># 彻底删除（含数据卷）</span>
+docker compose down -v</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Windows Version -->
+  <!-- ============================================================ -->
+  <div id="tab-windows" class="guide-section">
+
+    <h2 class="section-title"><span class="emoji">🪟</span>Windows 原生安装</h2>
+
+    <div class="platform-tags">
+      <span class="platform-tag">Windows 10 / 11</span>
+      <span class="platform-tag">PowerShell</span>
+      <span class="platform-tag">Node.js 22</span>
+    </div>
+
+    <div class="callout error">
+      <span class="icon">🚨</span>
+      <span><strong>重要：</strong>不要使用 CMD！请全程使用 <strong>PowerShell（以管理员身份运行）</strong>。</span>
+    </div>
+
+    <!-- Step 0 -->
+    <div class="step-card">
+      <span class="step-badge purple">Step 0</span>
+      <h3>正确安装 Node 22</h3>
+      <p>不要依赖随意安装的 Node，推荐使用 <a href="https://github.com/coreybutler/nvm-windows/releases" target="_blank">nvm-windows</a>：</p>
+      <pre><code>nvm install 22
+nvm use 22
+node -v</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-card">
+      <span class="step-badge purple">Step 1</span>
+      <h3>修复 PowerShell 执行策略</h3>
+      <p>以管理员身份打开 PowerShell，执行：</p>
+      <pre><code>Set-ExecutionPolicy RemoteSigned -Scope CurrentUser</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>提示确认时按 <code>Y</code>。</p>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+      <span class="step-badge purple">Step 2</span>
+      <h3>安装 OpenClaw</h3>
+      <pre><code>iwr https://openclaw.ai/install.ps1 -useb | iex</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <div class="callout warn">
+        <span class="icon">⚠️</span>
+        <span>如果脚本被拦截：右键文件 → 属性 → 勾选"解除锁定"。</span>
+      </div>
+      <p>验证安装：</p>
+      <pre><code>openclaw --version</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>如果提示 "命令未找到"，手动添加到 PATH：</p>
+      <pre><code>C:\Users\YourName\.openclaw\bin</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>然后重启 PowerShell。</p>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+      <span class="step-badge purple">Step 3</span>
+      <h3>引导初始化</h3>
+      <pre><code>openclaw onboard --install-daemon</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+      <p>粘贴 API Key 时确保干净，不要带多余空格。</p>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+      <span class="step-badge purple">Step 4</span>
+      <h3>处理 Windows Defender 警告</h3>
+      <p>后台守护进程可能触发防火墙提示，选择允许：</p>
+      <ul>
+        <li>允许 "专用网络" 访问</li>
+        <li>允许 "本地访问"</li>
+      </ul>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-card">
+      <span class="step-badge purple">Step 5</span>
+      <h3>启动 Gateway</h3>
+      <pre><code>openclaw gateway start
+openclaw dashboard</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+    </div>
+
+    <!-- Pitfalls -->
+    <div class="step-card">
+      <span class="step-badge purple" style="background:rgba(248,113,113,0.1);color:var(--red);border-color:rgba(248,113,113,0.2);">常见坑</span>
+      <h3>Windows 特有问题排查</h3>
+
+      <div class="callout error">
+        <span class="icon">❌</span>
+        <span><strong>WSL 混乱：</strong>不要混用 Windows 原生安装和 WSL 的 Node。只选一个环境，不要交叉使用。</span>
+      </div>
+
+      <div class="callout error">
+        <span class="icon">❌</span>
+        <span><strong>端口 18789 被防火墙拦截：</strong>进入 Windows Defender → 防火墙 → 允许应用通过防火墙，放行 OpenClaw。</span>
+      </div>
+
+      <div class="callout error">
+        <span class="icon">❌</span>
+        <span><strong>Path 无法识别：</strong>确认 <code>C:\Users\YourName\.openclaw\bin</code> 已加入系统 PATH 环境变量，并重启 PowerShell。</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>OpenClaw — Your personal AI assistant 🦞</p>
+    <p style="margin-top:8px;">
+      <a href="https://github.com/openclaw/openclaw" target="_blank">GitHub</a> ·
+      <a href="https://docs.openclaw.ai" target="_blank">官方文档</a> ·
+      <a href="https://www.npmjs.com/package/openclaw" target="_blank">npm</a>
+    </p>
+  </footer>
+
+</div>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.guide-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.version-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  window.scrollTo({ top: 200, behavior: 'smooth' });
+}
+
+function copyCode(btn) {
+  const code = btn.parentElement.querySelector('code');
+  const text = code.innerText || code.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '已复制 ✓';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => {
+      btn.textContent = '复制';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 1800);
+  });
+}
+</script>
+</body>
+</html>
